@@ -59,6 +59,8 @@ const FACTUAL_INDICATORS = [
     /\b(located in|capital of|population of|invented|discovered)\b/i, // Facts
     /\b(\d+%|\d+ percent|\d+ million|\d+ billion)\b/i, // Statistics
     /\b(according to|research shows|studies show|data shows)\b/i, // Citations
+    // News events - past tense actions
+    /\b(captured|arrested|killed|died|won|lost|defeated|signed|announced|resigned|fired|hired|appointed|elected|invaded|attacked|bombed|launched|passed|vetoed|banned|legalized|convicted|acquitted|sentenced|pardoned|impeached|indicted|extradited)\b/i,
 ];
 
 // ============================================================================
@@ -272,8 +274,8 @@ function containsSubjectAndVerb(text: string): boolean {
     const words = text.split(/\s+/);
     if (words.length < 2) return false;
 
-    // Check for common verbs
-    const verbPattern = /\b(is|are|was|were|has|have|had|do|does|did|can|could|will|would|should|may|might|been|being|made|said|went|came|took|gave|found|thought|knew|saw|got|became|let|began|put|run|bring|become|grow|draw|show|hear|play|move|live|die|work|use|seem|feel|try|leave|call|keep|hold|turn|allow|start|stand|lose|pay|meet|include|continue|set|learn|change|lead|understand|watch|follow|stop|create|speak|read|spend|win|happen|provide|sit|buy|send|build|stay|fall|cut|reach|kill|raise|pass|sell|decide|return|explain|hope|develop|carry|break|receive|agree|support|hit|produce|eat|cover|catch|require|believe|die|remember|love|consider|appear|walk|wait|serve|remain|offer|fight|throw|accept|save|perform|act|add|cause|grow|point|suggest|answer|charge|join|enjoy|teach|enter|fear)\b/i;
+    // Check for common verbs (expanded with news/political action verbs)
+    const verbPattern = /\b(is|are|was|were|has|have|had|do|does|did|can|could|will|would|should|may|might|been|being|made|said|went|came|took|gave|found|thought|knew|saw|got|became|let|began|put|run|bring|become|grow|draw|show|hear|play|move|live|die|work|use|seem|feel|try|leave|call|keep|hold|turn|allow|start|stand|lose|pay|meet|include|continue|set|learn|change|lead|understand|watch|follow|stop|create|speak|read|spend|win|happen|provide|sit|buy|send|build|stay|fall|cut|reach|kill|raise|pass|sell|decide|return|explain|hope|develop|carry|break|receive|agree|support|hit|produce|eat|cover|catch|require|believe|die|remember|love|consider|appear|walk|wait|serve|remain|offer|fight|throw|accept|save|perform|act|add|cause|grow|point|suggest|answer|charge|join|enjoy|teach|enter|fear|captured|arrested|defeated|signed|announced|resigned|fired|hired|appointed|elected|invaded|attacked|bombed|launched|passed|vetoed|banned|legalized|convicted|acquitted|sentenced|pardoned|impeached|indicted|extradited|won|lost|died|killed|discovered|invented|founded|established|confirmed|denied|claimed|stated|revealed|exposed|leaked|published|released|withdrew|suspended|blocked|approved|rejected|ordered|mandated|negotiated|agreed|refused|accepted|surrendered)\b/i;
 
     return verbPattern.test(text);
 }

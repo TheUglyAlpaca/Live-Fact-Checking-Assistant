@@ -25,27 +25,65 @@ import { extractSourceName } from './tavily';
 const AUTHORITY_TIERS: { domains: string[]; score: number }[] = [
     {
         // Tier 1: Government, academic, major fact-checkers
-        domains: ['.gov', '.edu', 'snopes.com', 'politifact.com', 'factcheck.org', 'reuters.com', 'apnews.com'],
+        domains: [
+            '.gov', '.edu', '.mil',
+            // Fact-checkers
+            'snopes.com', 'politifact.com', 'factcheck.org', 'fullfact.org',
+            'africacheck.org', 'chequeado.com', 'verificat.cat',
+            // Wire services
+            'reuters.com', 'apnews.com', 'afp.com',
+            // Scientific/medical
+            'nature.com', 'science.org', 'thelancet.com', 'nejm.org',
+            'who.int', 'cdc.gov', 'nih.gov', 'pubmed.ncbi.nlm.nih.gov',
+        ],
         score: 0.95,
     },
     {
-        // Tier 2: Major news organizations with editorial standards
-        domains: ['nytimes.com', 'washingtonpost.com', 'bbc.com', 'bbc.co.uk', 'theguardian.com', 'npr.org', 'pbs.org'],
+        // Tier 2: Major news organizations with strong editorial standards
+        domains: [
+            'nytimes.com', 'washingtonpost.com', 'wsj.com',
+            'bbc.com', 'bbc.co.uk', 'theguardian.com', 'economist.com',
+            'npr.org', 'pbs.org', 'c-span.org',
+            'propublica.org', 'theatlantic.com', 'newyorker.com',
+            'ft.com', 'bloomberg.com', 'politico.com',
+            // International
+            'dw.com', 'france24.com', 'aljazeera.com', 'scmp.com',
+            'abc.net.au', 'cbc.ca', 'globalnews.ca',
+        ],
         score: 0.85,
     },
     {
         // Tier 3: Established news sources
-        domains: ['cnn.com', 'usatoday.com', 'nbcnews.com', 'cbsnews.com', 'abcnews.go.com', 'time.com', 'forbes.com'],
+        domains: [
+            'cnn.com', 'usatoday.com', 'latimes.com', 'chicagotribune.com',
+            'nbcnews.com', 'cbsnews.com', 'abcnews.go.com',
+            'time.com', 'forbes.com', 'businessinsider.com', 'fortune.com',
+            'newsweek.com', 'thehill.com', 'axios.com', 'vox.com',
+            'slate.com', 'salon.com', 'thedailybeast.com',
+            // Tech
+            'wired.com', 'arstechnica.com', 'theverge.com', 'techcrunch.com',
+            // Sports
+            'espn.com', 'sports.yahoo.com',
+            // Regional
+            'bostonglobe.com', 'sfchronicle.com', 'dallasnews.com',
+            'seattletimes.com', 'denverpost.com', 'miamiherald.com',
+        ],
         score: 0.75,
     },
     {
         // Tier 4: Wikipedia and reference sources
-        domains: ['wikipedia.org', 'britannica.com', 'encyclopedia.com'],
+        domains: [
+            'wikipedia.org', 'britannica.com', 'encyclopedia.com',
+            'merriam-webster.com', 'dictionary.com', 'oxforddictionaries.com',
+            'investopedia.com', 'webmd.com', 'mayoclinic.org', 'healthline.com',
+            'history.com', 'biography.com', 'imdb.com',
+            'statista.com', 'worldbank.org', 'data.gov',
+        ],
         score: 0.70,
     },
     {
         // Tier 5: General news/blogs
-        domains: ['.com', '.org', '.net'],
+        domains: ['.com', '.org', '.net', '.io'],
         score: 0.50,
     },
 ];
@@ -54,8 +92,27 @@ const AUTHORITY_TIERS: { domains: string[]; score: number }[] = [
  * Domains to penalize (less reliable for factual claims)
  */
 const LOW_AUTHORITY_DOMAINS = [
-    'twitter.com', 'x.com', 'facebook.com', 'reddit.com', 'tiktok.com',
-    'youtube.com', 'medium.com', 'substack.com', 'wordpress.com', 'blogspot.com',
+    // Social media
+    'twitter.com', 'x.com', 'facebook.com', 'instagram.com', 'threads.net',
+    'reddit.com', 'tiktok.com', 'snapchat.com', 'pinterest.com',
+    'linkedin.com', 'tumblr.com', 'discord.com',
+    // Video platforms (user-generated)
+    'youtube.com', 'twitch.tv', 'vimeo.com', 'dailymotion.com',
+    // Blogging platforms
+    'medium.com', 'substack.com', 'wordpress.com', 'blogspot.com',
+    'blogger.com', 'wix.com', 'squarespace.com', 'ghost.io',
+    // Forums/Q&A
+    'quora.com', 'answers.yahoo.com', 'stackexchange.com',
+    // Partisan/opinion sites (both sides)
+    'breitbart.com', 'infowars.com', 'dailywire.com', 'theblaze.com',
+    'huffpost.com', 'rawstory.com', 'dailykos.com', 'motherjones.com',
+    // Tabloids
+    'dailymail.co.uk', 'nypost.com', 'thesun.co.uk', 'mirror.co.uk',
+    'tmz.com', 'pagesix.com', 'eonline.com', 'usmagazine.com',
+    // Content farms/aggregators
+    'buzzfeed.com', 'boredpanda.com', 'distractify.com',
+    // Known misinformation sources
+    'naturalnews.com', 'globalresearch.ca', 'zerohedge.com',
 ];
 
 /**
@@ -128,12 +185,20 @@ const CONTRADICT_PATTERNS = [
  */
 export function detectStance(claim: Claim, content: string): EvidenceStance {
     const normalizedContent = content.toLowerCase();
+    const normalizedClaim = claim.text.toLowerCase();
     const claimKeywords = extractKeywords(claim.text);
 
     // First check if content is even relevant to the claim
     const relevanceScore = calculateRelevance(claimKeywords, normalizedContent);
     if (relevanceScore < 0.2) {
         return 'INCONCLUSIVE';
+    }
+
+    // Check for numeric contradictions FIRST
+    // This catches cases like "Trump is 30" vs sources saying "Trump is 78"
+    const numericContradiction = detectNumericContradiction(normalizedClaim, normalizedContent);
+    if (numericContradiction === 'CONTRADICTS') {
+        return 'CONTRADICTS';
     }
 
     // Count support and contradict signals
@@ -173,6 +238,107 @@ export function detectStance(claim: Claim, content: string): EvidenceStance {
 
     // When signals are mixed or absent, be conservative
     return 'INCONCLUSIVE';
+}
+
+/**
+ * Detect numeric contradictions between claim and source
+ * 
+ * If the claim states a number (age, year, amount, etc.) and the source
+ * states a DIFFERENT number for the same entity/context, that's a contradiction.
+ * 
+ * Examples:
+ * - Claim: "Trump is 30 years old" + Source: "Trump is 78" → CONTRADICTS
+ * - Claim: "The tower is 300m tall" + Source: "330 meters" → CONTRADICTS
+ */
+function detectNumericContradiction(claim: string, content: string): EvidenceStance | null {
+    // Extract numbers from the claim
+    const claimNumbers = extractNumbersWithContext(claim);
+
+    if (claimNumbers.length === 0) {
+        return null; // No numbers in claim, can't detect numeric contradiction
+    }
+
+    // For each number in the claim, check if the content has a different number
+    // in a similar context (age, year, height, etc.)
+    for (const claimNum of claimNumbers) {
+        const contentNumbers = extractNumbersWithContext(content);
+
+        for (const contentNum of contentNumbers) {
+            // Check if they're discussing the same type of quantity
+            if (claimNum.context && contentNum.context &&
+                contextsMatch(claimNum.context, contentNum.context)) {
+                // If the numbers are significantly different, it's a contradiction
+                if (claimNum.value !== contentNum.value &&
+                    Math.abs(claimNum.value - contentNum.value) > 1) {
+                    return 'CONTRADICTS';
+                }
+            }
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Extract numbers with their surrounding context (age, year, height, etc.)
+ */
+function extractNumbersWithContext(text: string): { value: number; context: string | null }[] {
+    const results: { value: number; context: string | null }[] = [];
+
+    // Pattern for age: "X years old", "age X", "aged X", "X-year-old"
+    const agePattern = /(\d+)[\s-]*(years?\s*old|year[\s-]old)|age[d]?\s*(\d+)/gi;
+    let match;
+    while ((match = agePattern.exec(text)) !== null) {
+        const num = parseInt(match[1] || match[3], 10);
+        if (!isNaN(num)) {
+            results.push({ value: num, context: 'age' });
+        }
+    }
+
+    // Pattern for year: "in YYYY", "born YYYY", "since YYYY"
+    const yearPattern = /\b(in|born|since|from|year)\s*(1[89]\d{2}|20\d{2})\b/gi;
+    while ((match = yearPattern.exec(text)) !== null) {
+        const num = parseInt(match[2], 10);
+        if (!isNaN(num)) {
+            results.push({ value: num, context: 'year' });
+        }
+    }
+
+    // Pattern for height: "X meters", "X feet", "X cm", "X ft"
+    const heightPattern = /(\d+(?:\.\d+)?)\s*(meters?|metres?|feet|foot|ft|cm|m)\b/gi;
+    while ((match = heightPattern.exec(text)) !== null) {
+        const num = parseFloat(match[1]);
+        if (!isNaN(num)) {
+            results.push({ value: num, context: 'height' });
+        }
+    }
+
+    // Pattern for percentage: "X%", "X percent"
+    const percentPattern = /(\d+(?:\.\d+)?)\s*(%|percent)/gi;
+    while ((match = percentPattern.exec(text)) !== null) {
+        const num = parseFloat(match[1]);
+        if (!isNaN(num)) {
+            results.push({ value: num, context: 'percentage' });
+        }
+    }
+
+    // Pattern for generic large numbers (millions, billions)
+    const largeNumPattern = /(\d+(?:\.\d+)?)\s*(million|billion|trillion)/gi;
+    while ((match = largeNumPattern.exec(text)) !== null) {
+        const num = parseFloat(match[1]);
+        if (!isNaN(num)) {
+            results.push({ value: num, context: 'amount' });
+        }
+    }
+
+    return results;
+}
+
+/**
+ * Check if two numeric contexts are discussing the same type of quantity
+ */
+function contextsMatch(context1: string, context2: string): boolean {
+    return context1 === context2;
 }
 
 /**

@@ -235,22 +235,73 @@ export function extractSourceName(url: string): string {
 
         // Known source mappings
         const sourceMap: Record<string, string> = {
+            // Major newspapers
             'nytimes.com': 'New York Times',
             'washingtonpost.com': 'Washington Post',
-            'bbc.com': 'BBC',
-            'bbc.co.uk': 'BBC',
+            'wsj.com': 'Wall Street Journal',
+            'latimes.com': 'Los Angeles Times',
+            'chicagotribune.com': 'Chicago Tribune',
+            'bostonglobe.com': 'Boston Globe',
+            'usatoday.com': 'USA Today',
+            // Wire services
             'reuters.com': 'Reuters',
             'apnews.com': 'Associated Press',
+            'afp.com': 'AFP',
+            // Broadcast
             'cnn.com': 'CNN',
+            'bbc.com': 'BBC',
+            'bbc.co.uk': 'BBC',
+            'nbcnews.com': 'NBC News',
+            'cbsnews.com': 'CBS News',
+            'abcnews.go.com': 'ABC News',
+            'npr.org': 'NPR',
+            'pbs.org': 'PBS',
+            // International
             'theguardian.com': 'The Guardian',
-            'wikipedia.org': 'Wikipedia',
-            'en.wikipedia.org': 'Wikipedia',
+            'economist.com': 'The Economist',
+            'ft.com': 'Financial Times',
+            'aljazeera.com': 'Al Jazeera',
+            'dw.com': 'Deutsche Welle',
+            'france24.com': 'France 24',
+            'cbc.ca': 'CBC',
+            'abc.net.au': 'ABC Australia',
+            'scmp.com': 'South China Morning Post',
+            // Fact-checkers
             'snopes.com': 'Snopes',
             'politifact.com': 'PolitiFact',
             'factcheck.org': 'FactCheck.org',
-            'usatoday.com': 'USA Today',
-            'npr.org': 'NPR',
-            'pbs.org': 'PBS',
+            'fullfact.org': 'Full Fact',
+            // Reference
+            'wikipedia.org': 'Wikipedia',
+            'en.wikipedia.org': 'Wikipedia',
+            'britannica.com': 'Britannica',
+            // Magazines
+            'time.com': 'TIME',
+            'theatlantic.com': 'The Atlantic',
+            'newyorker.com': 'The New Yorker',
+            'newsweek.com': 'Newsweek',
+            'forbes.com': 'Forbes',
+            // Business
+            'bloomberg.com': 'Bloomberg',
+            'businessinsider.com': 'Business Insider',
+            'fortune.com': 'Fortune',
+            // Politics
+            'politico.com': 'Politico',
+            'thehill.com': 'The Hill',
+            'axios.com': 'Axios',
+            // Tech
+            'wired.com': 'Wired',
+            'theverge.com': 'The Verge',
+            'arstechnica.com': 'Ars Technica',
+            'techcrunch.com': 'TechCrunch',
+            // Science/Health
+            'nature.com': 'Nature',
+            'science.org': 'Science',
+            'who.int': 'WHO',
+            'cdc.gov': 'CDC',
+            'nih.gov': 'NIH',
+            'webmd.com': 'WebMD',
+            'mayoclinic.org': 'Mayo Clinic',
         };
 
         // Check direct match

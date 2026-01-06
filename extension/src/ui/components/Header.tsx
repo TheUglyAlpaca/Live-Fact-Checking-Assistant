@@ -15,7 +15,7 @@ export function Header({ onSettingsClick, showBack }: HeaderProps) {
             <div className="header-left">
                 <div className="logo">
                     <span className="logo-icon">🔍</span>
-                    <span className="logo-text">Fact Checker</span>
+                    <span className="logo-text">Tavily Fact Checker</span>
                 </div>
             </div>
             <button
