@@ -11,7 +11,7 @@
  */
 
 import { extractClaims, getFactualClaims } from '../lib/claimExtractor';
-import { searchForEvidence, TavilyError } from '../lib/tavily';
+import { searchForEvidence, generateSearchQueries, TavilyError } from '../lib/tavily';
 import { processSearchResults } from '../lib/verifier';
 import { generateVerdict } from '../lib/verdictEngine';
 import {
@@ -21,6 +21,7 @@ import {
     RateLimitError
 } from '../utils/rateLimiter';
 import { storage } from '../utils/messaging';
+import { getCachedVerdict, cacheVerification } from '../utils/cache';
 import { Claim, Verdict, ExtensionMessage } from '../lib/types';
 
 // ============================================================================
@@ -115,6 +116,17 @@ async function verifyText(text: string): Promise<{
 
         for (const claim of factualClaims) {
             try {
+                // Check cache first
+                const cached = await getCachedVerdict(claim.text);
+                if (cached) {
+                    console.log(`[Background] Cache hit for claim: "${claim.text.substring(0, 50)}..."`);
+                    verdicts.push({
+                        ...cached.verdict,
+                        claimId: claim.id // Update ID to match current session
+                    });
+                    continue;
+                }
+
                 // Check rate limit before each search
                 checkRateLimit();
 
@@ -132,6 +144,10 @@ async function verifyText(text: string): Promise<{
                 // Generate verdict
                 const verdict = generateVerdict(claim, aggregatedEvidence);
                 verdicts.push(verdict);
+
+                // Cache the result
+                const queries = generateSearchQueries(claim);
+                await cacheVerification(claim, verdict, queries);
 
                 console.log(`[Background] Verdict: ${verdict.verdict} (${verdict.confidence})`);
 

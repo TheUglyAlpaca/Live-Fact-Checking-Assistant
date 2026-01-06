@@ -423,6 +423,42 @@ body {
   transition: width 0.3s ease-out;
 }
 
+.confidence-explanation {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+  margin-top: var(--spacing-xs);
+  font-style: italic;
+}
+
+/* ============================================================================
+   Warnings Section
+   ============================================================================ */
+
+.warnings-section {
+  margin-bottom: var(--spacing-md);
+}
+
+.warning-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  background: rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.3);
+  border-radius: var(--border-radius-sm);
+  margin-bottom: var(--spacing-xs);
+  font-size: var(--font-size-xs);
+  color: var(--color-warning);
+}
+
+.warning-item:last-child {
+  margin-bottom: 0;
+}
+
+.warning-icon {
+  flex-shrink: 0;
+}
+
 /* ============================================================================
    Explanation
    ============================================================================ */
@@ -691,4 +727,208 @@ body {
 
 .app::-webkit-scrollbar-thumb:hover {
   background: var(--color-gray-400);
+}
+
+/* ============================================================================
+   Header Actions
+   ============================================================================ */
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.theme-toggle,
+.settings-button {
+  background: none;
+  border: none;
+  font-size: var(--font-size-lg);
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  border-radius: var(--border-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-gray-600);
+  transition: all 0.2s;
+}
+
+.theme-toggle:hover,
+.settings-button:hover {
+  background: var(--color-gray-100);
+  color: var(--color-gray-900);
+}
+
+/* ============================================================================
+   Dark Mode Support
+   ============================================================================ */
+
+[data-theme="dark"] {
+  --color-primary: #60a5fa;
+  --color-primary-dark: #3b82f6;
+  --color-success: #4ade80;
+  --color-danger: #f87171;
+  --color-warning: #fb923c;
+  --color-gray-50: #1a1a1a;
+  --color-gray-100: #262626;
+  --color-gray-200: #333333;
+  --color-gray-300: #404040;
+  --color-gray-400: #525252;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #9ca3af;
+  --color-gray-700: #d1d5db;
+  --color-gray-800: #e5e7eb;
+  --color-gray-900: #f3f4f6;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] body {
+  background: #0f0f0f;
+  color: var(--color-gray-800);
+}
+
+[data-theme="dark"] .header {
+  background: #1a1a1a;
+  border-bottom-color: var(--color-gray-200);
+}
+
+[data-theme="dark"] .claim-card {
+  background: #1a1a1a;
+  border-color: var(--color-gray-200);
+}
+
+[data-theme="dark"] .text-input,
+[data-theme="dark"] .api-key-input {
+  background: #1a1a1a;
+  color: var(--color-gray-800);
+  border-color: var(--color-gray-300);
+}
+
+[data-theme="dark"] .stored-key {
+  background: #262626;
+}
+
+[data-theme="dark"] .theme-toggle,
+[data-theme="dark"] .settings-button {
+  color: var(--color-gray-600);
+}
+
+[data-theme="dark"] .theme-toggle:hover,
+[data-theme="dark"] .settings-button:hover {
+  background: var(--color-gray-100);
+  color: var(--color-gray-900);
+}
+
+/* ============================================================================
+   Smooth Animations
+   ============================================================================ */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.claim-card {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.results-section {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.verdict-badge {
+  animation: slideIn 0.3s ease-out;
+}
+
+.loading-section .spinner {
+  animation: spin 0.8s linear infinite, pulse 2s ease-in-out infinite;
+}
+
+.citation-item {
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Smooth transitions for interactive elements */
+.claim-card,
+.verify-button,
+.save-button,
+.text-input,
+.api-key-input,
+.theme-toggle,
+.settings-button {
+  transition: all 0.2s ease-out;
+}
+
+/* Confidence bar animation */
+.confidence-fill {
+  animation: slideIn 0.5s ease-out;
+}
+
+.confidence-explanation {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+  margin-top: var(--spacing-xs);
+  font-style: italic;
+}
+
+/* ============================================================================
+   Warnings Section
+   ============================================================================ */
+
+.warnings-section {
+  margin-bottom: var(--spacing-md);
+}
+
+.warning-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  background: rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.3);
+  border-radius: var(--border-radius-sm);
+  margin-bottom: var(--spacing-xs);
+  font-size: var(--font-size-xs);
+  color: var(--color-warning);
+}
+
+.warning-item:last-child {
+  margin-bottom: 0;
+}
+
+.warning-icon {
+  flex-shrink: 0;
 }

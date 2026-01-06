@@ -58,7 +58,22 @@ export function ClaimCard({ claim, verdict }: ClaimCardProps) {
                                 }}
                             />
                         </div>
+                        {verdict.confidenceExplanation && (
+                            <p className="confidence-explanation">{verdict.confidenceExplanation}</p>
+                        )}
                     </div>
+
+                    {/* Warnings */}
+                    {verdict.warnings && verdict.warnings.length > 0 && (
+                        <div className="warnings-section">
+                            {verdict.warnings.map((warning, index) => (
+                                <div key={index} className="warning-item">
+                                    <span className="warning-icon">⚠️</span>
+                                    <span>{warning}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
 
                     {/* Explanation */}
                     <div className="explanation">

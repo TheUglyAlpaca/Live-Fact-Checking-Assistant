@@ -57,6 +57,8 @@ export function generateVerdict(claim: Claim, evidence: AggregatedEvidence): Ver
     const confidence = calculateConfidence(evidence, verdictLabel);
     const citations = selectCitations(evidence, verdictLabel);
     const explanation = generateExplanation(claim, evidence, verdictLabel, confidence);
+    const warnings = checkSourceDiversity(evidence);
+    const confidenceExplanation = generateConfidenceExplanation(evidence, verdictLabel, confidence);
 
     return {
         claimId: claim.id,
@@ -64,6 +66,8 @@ export function generateVerdict(claim: Claim, evidence: AggregatedEvidence): Ver
         confidence,
         explanation,
         citations,
+        warnings: warnings.length > 0 ? warnings : undefined,
+        confidenceExplanation,
     };
 }
 
@@ -299,4 +303,112 @@ export function getVerdictIcon(verdict: VerdictLabel): string {
         default:
             return '?';
     }
+}
+
+/**
+ * Check for source diversity issues and return warnings
+ */
+function checkSourceDiversity(evidence: AggregatedEvidence): string[] {
+    const warnings: string[] = [];
+    const allEvidence = [...evidence.supporting, ...evidence.contradicting, ...evidence.inconclusive];
+
+    if (allEvidence.length === 0) return warnings;
+
+    // Check for unique domains
+    const domains = new Set(allEvidence.map(e => {
+        try {
+            return new URL(e.url).hostname;
+        } catch {
+            return e.source;
+        }
+    }));
+
+    if (domains.size < 3 && allEvidence.length >= 3) {
+        warnings.push('Limited source diversity: Most sources are from similar domains.');
+    }
+
+    // Check for high-authority source presence
+    const hasHighAuthority = allEvidence.some(e => e.authority >= 0.8);
+    if (!hasHighAuthority && allEvidence.length >= 2) {
+        warnings.push('No high-authority sources (e.g., .gov, major news) found.');
+    }
+
+    // Check for very low average authority
+    const avgAuthority = allEvidence.reduce((sum, e) => sum + e.authority, 0) / allEvidence.length;
+    if (avgAuthority < 0.4) {
+        warnings.push('Source quality is below average. Verify with additional sources.');
+    }
+
+    // Check for recency
+    const recentSources = allEvidence.filter(e => {
+        if (!e.publishedDate) return false;
+        const date = new Date(e.publishedDate);
+        const monthsAgo = (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24 * 30);
+        return monthsAgo < 12;
+    });
+
+    if (recentSources.length === 0 && allEvidence.length >= 2) {
+        warnings.push('No recent sources found. Information may be outdated.');
+    }
+
+    return warnings;
+}
+
+/**
+ * Generate an explanation of why confidence is at a particular level
+ */
+function generateConfidenceExplanation(
+    evidence: AggregatedEvidence,
+    verdict: VerdictLabel,
+    confidence: number
+): string {
+    const factors: string[] = [];
+    const { supporting, contradicting, totalSources } = evidence;
+    const allEvidence = [...supporting, ...contradicting, ...evidence.inconclusive];
+
+    // Source count factor
+    if (totalSources >= 5) {
+        factors.push('multiple sources analyzed');
+    } else if (totalSources <= 2) {
+        factors.push('limited sources available');
+    }
+
+    // Consensus strength
+    const consensusStrength = Math.abs(evidence.consensusScore);
+    if (consensusStrength >= 0.8) {
+        factors.push('strong consensus among sources');
+    } else if (consensusStrength <= 0.3) {
+        factors.push('mixed or weak consensus');
+    }
+
+    // Authority factor
+    const highAuthorityCount = allEvidence.filter(e => e.authority >= 0.8).length;
+    if (highAuthorityCount >= 2) {
+        factors.push('includes high-authority sources');
+    } else if (highAuthorityCount === 0 && allEvidence.length > 0) {
+        factors.push('no high-authority sources');
+    }
+
+    // Recency factor
+    const recentCount = allEvidence.filter(e => {
+        if (!e.publishedDate) return false;
+        const date = new Date(e.publishedDate);
+        const monthsAgo = (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24 * 30);
+        return monthsAgo < 6;
+    }).length;
+
+    if (recentCount >= 2) {
+        factors.push('recent sources');
+    }
+
+    // Verdict-specific factors
+    if (verdict === 'MISLEADING') {
+        factors.push('claim contains both accurate and inaccurate elements');
+    }
+
+    if (factors.length === 0) {
+        return `Confidence of ${Math.round(confidence * 100)}% based on available evidence.`;
+    }
+
+    return `Confidence of ${Math.round(confidence * 100)}%: ${factors.join(', ')}.`;
 }

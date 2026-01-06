@@ -119,6 +119,10 @@ export interface Verdict {
     explanation: string;
     /** Sources used to reach this verdict */
     citations: Citation[];
+    /** Warnings about the verification (e.g., source diversity issues) */
+    warnings?: string[];
+    /** Explanation of why confidence is at this level */
+    confidenceExplanation?: string;
 }
 
 // ============================================================================

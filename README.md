@@ -10,12 +10,16 @@ A production-quality Chrome extension that extracts verifiable claims from user-
 ## Features
 
 - **Text Selection or Paste** - Highlight text on any webpage or paste directly into the extension
+- **Keyboard Shortcut** - Use `Ctrl+Shift+F` (or `Cmd+Shift+F` on Mac) to quickly verify selected text
 - **Automatic Claim Extraction** - Splits compound sentences into atomic, verifiable claims
 - **Smart Classification** - Categorizes claims as FACTUAL, OPINION, PREDICTION, or AMBIGUOUS
+- **Verification Caching** - Caches verified claims to save API calls and provide instant results
 - **Multi-Query Search** - Uses neutral, fact-check, and negated queries to avoid confirmation bias
 - **Evidence Aggregation** - Weighs sources by authority, recency, and consensus
-- **Transparent Verdicts** - Every verdict includes confidence scores and cited sources
-- **Epistemic Humility** - Prefers "Insufficient Evidence" over guessing; confidence capped at 90%
+- **Source Diversity Checks** - Warns if sources lack diversity or high-authority domains
+- **Transparent Verdicts** - Every verdict includes confidence scores, explanations, and cited sources
+- **Dark Mode** - Automatically adapts to your system's color scheme
+- **Data Export** - Export your verification history to JSON for analysis
 
 ## Architecture
 
@@ -31,7 +35,7 @@ extension/
 │   │   ├── tavily.ts
 │   │   ├── verifier.ts
 │   │   └── verdictEngine.ts
-│   └── utils/             # Helpers (messaging, rate limiting)
+│   └── utils/             # Helpers (messaging, rate limiting, cache)
 ├── public/
 │   ├── manifest.json
 │   └── icons/
@@ -61,7 +65,7 @@ extension/
 ### Prerequisites
 
 - Node.js 18+
-- A [Tavily API key](https://tavily.com) (free tier available)
+- A Tavily API key (free tier available)
 
 ### Installation
 
@@ -88,7 +92,7 @@ extension/
    - Select the `extension/dist` folder
 
 5. Configure API Key:
-   - Click the extension icon
+   - Click the extension icon or use `Cmd+Shift+F`
    - Enter your Tavily API key in settings
    - Your key is stored locally and never sent to external servers
 
@@ -102,7 +106,7 @@ npm run dev
 ## Security Model
 
 - **API keys never touch client-side code** - All Tavily API calls go through the background service worker
-- **Local storage only** - API keys are stored in `chrome.storage.local`
+- **Local storage only** - API keys are stored in `chrome.storage.local` with encryption at rest
 - **Rate limiting** - 10 requests per minute to protect API quota
 - **No external tracking** - No analytics or telemetry
 
@@ -123,11 +127,14 @@ graph LR
     A[User Input] --> B[Claim Extraction]
     B --> C[Classification]
     C --> D{FACTUAL?}
-    D -->|Yes| E[Multi-Query Search]
+    D -->|Yes| E[Check Cache]
     D -->|No| F[Skip Verification]
-    E --> G[Evidence Aggregation]
-    G --> H[Verdict Generation]
-    H --> I[Display Results]
+    E -->|Hit| G[Return Cached Verdict]
+    E -->|Miss| H[Multi-Query Search]
+    H --> I[Evidence Aggregation]
+    I --> J[Source Analysis]
+    J --> K[Verdict Generation]
+    K --> L[Cache & Display Results]
 ```
 
 ## API Reference
@@ -159,7 +166,7 @@ const evidence = processSearchResults(claim, searchResults);
 import { generateVerdict, getVerdictColor } from './lib/verdictEngine';
 
 const verdict = generateVerdict(claim, evidence);
-// Returns { verdict, confidence, explanation, citations }
+// Returns { verdict, confidence, explanation, citations, warnings }
 ```
 
 ## Testing

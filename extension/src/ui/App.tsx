@@ -22,11 +22,37 @@ const initialState: VerificationState = {
     verdicts: [],
 };
 
+type Theme = 'light' | 'dark';
+
 export default function App() {
     const [state, setState] = useState<VerificationState>(initialState);
     const [inputText, setInputText] = useState('');
     const [hasApiKey, setHasApiKey] = useState<boolean | null>(null);
     const [showSettings, setShowSettings] = useState(false);
+
+    // Theme state initialization
+    const [theme, setTheme] = useState<Theme>(() => {
+        // Check local storage
+        if (typeof localStorage !== 'undefined') {
+            const saved = localStorage.getItem('theme') as Theme;
+            if (saved === 'dark' || saved === 'light') return saved;
+        }
+        // Fallback to system preference
+        if (typeof window !== 'undefined' && window.matchMedia) {
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        return 'light';
+    });
+
+    // Apply theme effect
+    useEffect(() => {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+    }, [theme]);
+
+    const toggleTheme = () => {
+        setTheme(prev => prev === 'light' ? 'dark' : 'light');
+    };
 
     // Check for API key on mount
     useEffect(() => {
@@ -180,7 +206,11 @@ export default function App() {
     if (hasApiKey === null) {
         return (
             <div className="app">
-                <Header onSettingsClick={() => setShowSettings(true)} />
+                <Header
+                    onSettingsClick={() => setShowSettings(true)}
+                    theme={theme}
+                    onToggleTheme={toggleTheme}
+                />
                 <div className="loading">
                     <div className="spinner" />
                     <p>Loading...</p>
@@ -193,7 +223,12 @@ export default function App() {
     if (showSettings) {
         return (
             <div className="app">
-                <Header onSettingsClick={() => setShowSettings(false)} showBack={hasApiKey === true} />
+                <Header
+                    onSettingsClick={() => setShowSettings(false)}
+                    showBack={hasApiKey === true}
+                    theme={theme}
+                    onToggleTheme={toggleTheme}
+                />
                 <ApiKeyInput onSave={handleApiKeySave} />
             </div>
         );
@@ -201,7 +236,11 @@ export default function App() {
 
     return (
         <div className="app">
-            <Header onSettingsClick={() => setShowSettings(true)} />
+            <Header
+                onSettingsClick={() => setShowSettings(true)}
+                theme={theme}
+                onToggleTheme={toggleTheme}
+            />
 
             {/* Input Section */}
             {state.status === 'idle' && (
@@ -257,9 +296,11 @@ export default function App() {
                 <div className="results-section">
                     <div className="results-header">
                         <h2>Results</h2>
-                        <button className="new-check-button" onClick={handleReset}>
-                            New Check
-                        </button>
+                        <div className="results-actions">
+                            <button className="new-check-button" onClick={handleReset}>
+                                New Check
+                            </button>
+                        </div>
                     </div>
 
                     {state.claims.length === 0 ? (

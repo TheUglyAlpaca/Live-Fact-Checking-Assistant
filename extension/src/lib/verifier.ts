@@ -204,9 +204,6 @@ export function detectStance(claim: Claim, content: string): EvidenceStance {
     // Check for semantic content matching (source restates the claim)
     // This is crucial for facts like "X founded Y" where the source says the same thing
     const semanticMatch = detectSemanticMatch(normalizedClaim, normalizedContent);
-    if (semanticMatch === 'SUPPORTS') {
-        return 'SUPPORTS';
-    }
 
     // Count support and contradict signals
     let supportScore = 0;
@@ -222,6 +219,17 @@ export function detectStance(claim: Claim, content: string): EvidenceStance {
         if (pattern.test(normalizedContent)) {
             contradictScore += 1;
         }
+    }
+
+    // If semantic match says SUPPORTS, verify there are no strong contradictions
+    if (semanticMatch === 'SUPPORTS') {
+        // If we found specific contradiction keywords, downgrade to INCONCLUSIVE (disputed)
+        if (contradictScore > 0) {
+            return 'INCONCLUSIVE';
+        }
+        return 'SUPPORTS';
+    } else if (semanticMatch === 'CONTRADICTS') {
+        return 'CONTRADICTS';
     }
 
     // Check for explicit verdict patterns (e.g., from fact-check sites)
@@ -262,6 +270,19 @@ function detectSemanticMatch(claim: string, content: string): EvidenceStance | n
 
     // Try each semantic pattern
     const patterns: SemanticPattern[] = [
+        // Military/Conflict Action patterns
+        {
+            claimPattern: /([a-z\s\-']+) (?:fired|launched|shot) (?:a |an |the )?(?:rocket|rockets|missile|missiles|drone|drones|projectile|projectiles) (?:at|into|towards|against|on) ([a-z\s\-']+)/i,
+            contentIndicators: ['fired', 'launched', 'shot', 'rocket', 'missile', 'drone', 'projectile', 'attack'],
+            extractName: (match) => match[1].trim(), // Actor
+            extractEntity: (match) => match[2].trim(), // Target
+        },
+        {
+            claimPattern: /([a-z\s\-']+) (?:attacked|invaded|bombed|struck|hit|targeted) ([a-z\s\-']+)/i,
+            contentIndicators: ['attacked', 'invaded', 'bombed', 'struck', 'hit', 'targeted', 'strike', 'invasion'],
+            extractName: (match) => match[1].trim(), // Actor
+            extractEntity: (match) => match[2].trim(), // Target
+        },
         // Founder/CEO/Creator patterns - now extracts both entity and person
         {
             claimPattern: /([a-z\s\-']+) (?:was |is )?(?:founded|created|started|established|built|launched) by ([a-z\s\-']+)/i,
@@ -329,6 +350,7 @@ function detectSemanticMatch(claim: string, content: string): EvidenceStance | n
             extractEntity: (match) => match[2].trim(),
         },
     ];
+
 
     // Try each pattern
     for (const pattern of patterns) {
