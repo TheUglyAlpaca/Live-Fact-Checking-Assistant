@@ -1,0 +1,42 @@
+{
+    "manifest_version": 3,
+    "name": "Live Fact-Checking Assistant",
+    "version": "1.0.0",
+    "description": "Extract and verify factual claims from any text with transparent, cited evidence",
+    "permissions": [
+        "activeTab",
+        "contextMenus",
+        "storage"
+    ],
+    "host_permissions": [
+        "https://api.tavily.com/*"
+    ],
+    "background": {
+        "service_worker": "background.js",
+        "type": "module"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "contentScript.js"
+            ]
+        }
+    ],
+    "action": {
+        "default_popup": "popup.html",
+        "default_title": "Fact-Check Selected Text",
+        "default_icon": {
+            "16": "icons/icon16.png",
+            "48": "icons/icon48.png",
+            "128": "icons/icon128.png"
+        }
+    },
+    "icons": {
+        "16": "icons/icon16.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
+    }
+}

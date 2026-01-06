@@ -1,0 +1,18 @@
+{
+    "name": "fact-checker",
+    "version": "1.0.0",
+    "description": "Live Fact-Checking Chrome Extension powered by Tavily",
+    "private": true,
+    "scripts": {
+        "dev": "npm run dev --prefix extension",
+        "build": "npm run build --prefix extension",
+        "install:extension": "npm install --prefix extension"
+    },
+    "keywords": [
+        "chrome-extension",
+        "fact-checking",
+        "tavily"
+    ],
+    "author": "",
+    "license": "MIT"
+}
