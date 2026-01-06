@@ -201,6 +201,13 @@ export function detectStance(claim: Claim, content: string): EvidenceStance {
         return 'CONTRADICTS';
     }
 
+    // Check for semantic content matching (source restates the claim)
+    // This is crucial for facts like "X founded Y" where the source says the same thing
+    const semanticMatch = detectSemanticMatch(normalizedClaim, normalizedContent);
+    if (semanticMatch === 'SUPPORTS') {
+        return 'SUPPORTS';
+    }
+
     // Count support and contradict signals
     let supportScore = 0;
     let contradictScore = 0;
@@ -238,6 +245,189 @@ export function detectStance(claim: Claim, content: string): EvidenceStance {
 
     // When signals are mixed or absent, be conservative
     return 'INCONCLUSIVE';
+}
+
+/**
+ * Detect if source content semantically matches/supports the claim
+ * 
+ * This catches cases where the source simply restates the same fact
+ * without using explicit "true/confirmed" language.
+ * 
+ * Handles negated claims - if claim says "X was NOT founded by Y"
+ * and source confirms "Y founded X", that's a CONTRADICTION.
+ */
+function detectSemanticMatch(claim: string, content: string): EvidenceStance | null {
+    // Check if the claim is negated
+    const isNegated = /\b(not|never|wasn't|weren't|isn't|aren't|didn't|doesn't|don't|hasn't|haven't|hadn't|cannot|can't|won't|wouldn't)\b/i.test(claim);
+
+    // Try each semantic pattern
+    const patterns: SemanticPattern[] = [
+        // Founder/CEO/Creator patterns - now extracts both entity and person
+        {
+            claimPattern: /([a-z\s\-']+) (?:was |is )?(?:founded|created|started|established|built|launched) by ([a-z\s\-']+)/i,
+            contentIndicators: ['founded', 'founder', 'co-founder', 'ceo', 'creator', 'started', 'built', 'established', 'launched'],
+            extractName: (match) => match[2].trim(), // Person name
+            extractEntity: (match) => match[1].trim(), // Company/entity name
+        },
+        {
+            claimPattern: /([a-z\s\-']+) (?:is|was|became) (?:the )?(?:ceo|founder|co-founder|creator|president|chairman) (?:of |at )?([a-z\s\-']*)/i,
+            contentIndicators: ['ceo', 'founder', 'co-founder', 'creator', 'president', 'chairman', 'chief executive'],
+            extractName: (match) => match[1].trim(), // Person name
+            extractEntity: (match) => match[2]?.trim() || '', // Company (optional)
+        },
+        // Authorship/Invention patterns
+        {
+            claimPattern: /(?:written|wrote|authored|penned) by ([a-z\s\-']+)/i,
+            contentIndicators: ['wrote', 'written', 'author', 'authored', 'penned', 'writer'],
+            extractName: (match) => match[1].trim(),
+        },
+        {
+            claimPattern: /([a-z\s\-']+) (?:invented|discovered|created|developed|designed) ([a-z\s\-']+)/i,
+            contentIndicators: ['invented', 'invented by', 'discovered', 'created', 'developed', 'designed', 'inventor', 'discoverer'],
+            extractName: (match) => match[1].trim(),
+            extractEntity: (match) => match[2].trim(),
+        },
+        // Ownership/Acquisition patterns
+        {
+            claimPattern: /([a-z\s\-']+) (?:owns|owned|acquired|bought|purchased) ([a-z\s\-']+)/i,
+            contentIndicators: ['owns', 'owned', 'acquired', 'bought', 'purchased', 'acquisition', 'owner'],
+            extractName: (match) => match[1].trim(),
+            extractEntity: (match) => match[2].trim(),
+        },
+        // Awards/Achievements patterns
+        {
+            claimPattern: /([a-z\s\-']+) (?:won|received|earned|awarded|got) (?:the )?([a-z\s\-']+)/i,
+            contentIndicators: ['won', 'winner', 'received', 'awarded', 'earned', 'recipient', 'laureate'],
+            extractName: (match) => match[1].trim(),
+            extractEntity: (match) => match[2].trim(),
+        },
+        // Employment patterns
+        {
+            claimPattern: /([a-z\s\-']+) (?:works|worked|employed) (?:at|by|for) ([a-z\s\-']+)/i,
+            contentIndicators: ['works', 'worked', 'employee', 'employed', 'staff', 'team'],
+            extractName: (match) => match[1].trim(),
+            extractEntity: (match) => match[2].trim(),
+        },
+        // Relationship patterns
+        {
+            claimPattern: /([a-z\s\-']+) (?:is|was) (?:married to|the (?:wife|husband|spouse|partner) of) ([a-z\s\-']+)/i,
+            contentIndicators: ['married', 'wife', 'husband', 'spouse', 'partner', 'wedding'],
+            extractName: (match) => match[1].trim(),
+            extractEntity: (match) => match[2].trim(),
+        },
+        // Birth/Death patterns
+        {
+            claimPattern: /([a-z\s\-']+) (?:was )?born (?:in|on) ([a-z0-9\s,\-]+)/i,
+            contentIndicators: ['born', 'birth', 'birthday', 'birthplace', 'native'],
+            extractName: (match) => match[1].trim(),
+            extractEntity: (match) => match[2].trim(),
+        },
+        {
+            claimPattern: /([a-z\s\-']+) died (?:in|on) ([a-z0-9\s,\-]+)/i,
+            contentIndicators: ['died', 'death', 'passed away', 'deceased'],
+            extractName: (match) => match[1].trim(),
+            extractEntity: (match) => match[2].trim(),
+        },
+    ];
+
+    // Try each pattern
+    for (const pattern of patterns) {
+        const match = claim.match(pattern.claimPattern);
+        if (match) {
+            const name = pattern.extractName(match);
+            const entity = pattern.extractEntity?.(match);
+
+            const nameParts = name.toLowerCase().split(/\s+/).filter(p => p.length > 2);
+            const entityParts = entity?.toLowerCase().split(/\s+/).filter(p => p.length > 2) || [];
+
+            // Check if content has the name
+            const contentHasName = nameParts.length > 0 && nameParts.every(part => content.includes(part));
+
+            // Check if content has any indicator
+            const contentHasIndicator = pattern.contentIndicators.some(ind =>
+                content.includes(ind.toLowerCase())
+            );
+
+            // Check if content has entity - REQUIRE ALL entity parts to match
+            // This prevents "Facebook founded by X" matching sources about "Tavily founded by X"
+            const contentHasEntity = entityParts.length === 0 || entityParts.every(part => content.includes(part));
+
+            if (contentHasName && contentHasIndicator && contentHasEntity) {
+                return isNegated ? 'CONTRADICTS' : 'SUPPORTS';
+            }
+        }
+    }
+
+    // Location claims: "X is located/based/headquartered in Y"
+    const locationMatch = claim.match(/([a-z\s\-']+) (?:is|are|was|were) (?:located |based |headquartered )?in ([a-z\s,\-']+)/i);
+    if (locationMatch) {
+        const entity = locationMatch[1].trim().toLowerCase();
+        const location = locationMatch[2].trim().toLowerCase();
+        const entityParts = entity.split(/\s+/).filter(p => p.length > 2);
+        const locationParts = location.split(/\s+/).filter(p => p.length > 2);
+
+        const hasEntity = entityParts.every(part => content.includes(part));
+        const hasLocation = locationParts.some(part => content.includes(part));
+
+        if (hasEntity && hasLocation) {
+            return isNegated ? 'CONTRADICTS' : 'SUPPORTS';
+        }
+    }
+
+    // Quantity claims: "X has Y employees/users/members"
+    const quantityMatch = claim.match(/([a-z\s\-']+) has (\d+[\d,]*)\s*(employees|users|members|customers|subscribers|followers)/i);
+    if (quantityMatch) {
+        const entity = quantityMatch[1].trim().toLowerCase();
+        const quantity = quantityMatch[2].replace(/,/g, '');
+        const unit = quantityMatch[3].toLowerCase();
+
+        const entityParts = entity.split(/\s+/).filter(p => p.length > 2);
+        const hasEntity = entityParts.every(part => content.includes(part));
+        const hasUnit = content.includes(unit) || content.includes(unit.replace(/s$/, ''));
+
+        if (hasEntity && hasUnit) {
+            // Check if the same quantity appears
+            if (content.includes(quantity)) {
+                return isNegated ? 'CONTRADICTS' : 'SUPPORTS';
+            }
+        }
+    }
+
+    // General "X is/was a/an Y" identity claims (catch-all, less strict)
+    const identityMatch = claim.match(/([a-z\s\-']+) (?:is|was|are|were) (?:a |an |the )?([a-z\s\-']+)/i);
+    if (identityMatch) {
+        const subject = identityMatch[1].trim().toLowerCase();
+        const predicate = identityMatch[2].trim().toLowerCase();
+
+        // Filter out very common/short words
+        const subjectParts = subject.split(/\s+/).filter(p => p.length > 2 && !['the', 'and', 'for'].includes(p));
+        const predicateParts = predicate.split(/\s+/).filter(p => p.length > 2 && !['the', 'and', 'for', 'who', 'that'].includes(p));
+
+        // Require substantial overlap
+        if (subjectParts.length > 0 && predicateParts.length > 0) {
+            const hasSubject = subjectParts.every(part => content.includes(part));
+            const hasPredicate = predicateParts.some(part => content.includes(part));
+
+            if (hasSubject && hasPredicate) {
+                // Only count as support if no contradiction signals present in source
+                if (!CONTRADICT_PATTERNS.some(p => p.test(content))) {
+                    return isNegated ? 'CONTRADICTS' : 'SUPPORTS';
+                }
+            }
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Semantic pattern definition for claim matching
+ */
+interface SemanticPattern {
+    claimPattern: RegExp;
+    contentIndicators: string[];
+    extractName: (match: RegExpMatchArray) => string;
+    extractEntity?: (match: RegExpMatchArray) => string;
 }
 
 /**
