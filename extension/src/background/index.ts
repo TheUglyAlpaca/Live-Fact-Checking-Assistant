@@ -227,8 +227,21 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
             },
         });
 
-        // Open the popup (this doesn't work directly, so we'll handle it in the popup)
-        // The popup will check for pendingVerification on open
+        // Open the popup programmatically (Chrome 127+)
+        try {
+            await chrome.action.openPopup();
+            console.log('[Background] Popup opened successfully');
+        } catch (error) {
+            console.log('[Background] Could not open popup programmatically:', error);
+            // Fallback: Create a new popup window if openPopup is not supported
+            chrome.windows.create({
+                url: chrome.runtime.getURL('popup.html'),
+                type: 'popup',
+                width: 400,
+                height: 600,
+                focused: true,
+            });
+        }
     }
 });
 

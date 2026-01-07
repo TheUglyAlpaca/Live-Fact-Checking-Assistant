@@ -23,7 +23,7 @@ flowchart TD
 
 ### 1. User Input (`App.tsx`)
 
-The user enters text into the popup's textarea and clicks **"Verify Claims"**.
+The user enters text into the popup's text-area and clicks **"Verify Claims"**.
 
 ```
 User types: "Iran fired rockets into Israel in 2025."
